@@ -1,0 +1,40 @@
+# ---------------------------
+# Node / Frontend
+# ---------------------------
+manas.ai/node_modules/
+manas.ai/dist/
+manas.ai/.env
+manas.ai/*.log
+
+# ---------------------------
+# Python / Backend
+# ---------------------------
+api.manas.ai/__pycache__/
+api.manas.ai/*.pyc
+api.manas.ai/.env
+api.manas.ai/*.log
+api.manas.ai/.pytest_cache/
+api.manas.ai/.venv/
+api.manas.ai/env/
+api.manas.ai/.mypy_cache/
+
+# ---------------------------
+# Docker
+# ---------------------------
+docker-compose.override.yml
+*.pid
+
+# ---------------------------
+# SSL Certificates
+# ---------------------------
+*.pem
+certbot-etc/
+certbot-var/
+
+# ---------------------------
+# OS / IDE
+# ---------------------------
+.DS_Store
+.vscode/
+.idea/
+*.swp

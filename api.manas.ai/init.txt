@@ -1,0 +1,19 @@
+BUILD fastapi-backend's docker file
+----------> docker build -t fastapi-backend . 
+
+let docker run on a free port in detach mode
+----------> docker run -d  -p 5050:8000 --env-file .env fastapi-backend
+
+
+
+
+
+
+
+STEPS Followed to deploy in Oracle:-
+    1. create compartment for dev and prod.
+    2. setup vcn- virtual cloud network
+        i. create vcn for theallset and add subnet inside it
+            a. parent vcn 10.0.0.0/16
+            b. dev subnet 10.0.1.0/24
+            c. prod subnet 10.0.2.0/24
