@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type JSX } from "react";
 import { motion } from "framer-motion";
 import { Copy, Check } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { addMessage, getLastUserMessages } from "../helper/indexDB";
 import MessageInputBox from "../components/common/messageInput";
 import { searchAsChat } from "../routers/searchRouter";
+import CodeBlock from "../components/codeBlock";
 type ChatMessage = {
   role: "ai" | "user"; // notice "user" instead of "user"
   text: string;
@@ -16,6 +17,7 @@ const Search = () => {
   const [copied, setCopied] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -25,38 +27,119 @@ const Search = () => {
 
   const handleSend = async (msg: string) => {
     if (!msg.trim()) return;
+
     // Add user message locally & store in IndexedDB
     setMessages((prev: ChatMessage[]) => [
       ...prev,
       { role: "user", text: msg },
     ]);
     await addMessage({ role: "user", text: msg });
+
     try {
-      // Get last 10 messages for context
-      const lastUserMessages = await getLastUserMessages(10);
-      // Convert to single string for context (or array if backend supports)
+      // Get last 5 messages for context
+      const lastUserMessages = await getLastUserMessages(5);
       const previousContext = lastUserMessages
         .slice(0, -1)
         .map((m) => `User: ${m.text}`)
         .join("\n");
+
       const latestMessage = lastUserMessages.length
         ? lastUserMessages[lastUserMessages.length - 1].text
         : msg;
+
+      setLoading(true);
       const res = await searchAsChat({
         previous_context: previousContext,
         latest_message: latestMessage,
       });
-      // Add AI message locally & store in IndexedDB
-      setMessages((prev) => [...prev, { role: "ai", text: res.ai_response }]);
+
+      // Add an empty AI message to start streaming
+      setMessages((prev) => [...prev, { role: "ai", text: "" }]);
+
+      let aiText = "";
+      const chunkSize = 10;
+      const delay = 10; // milliseconds
+
+      for (let i = 0; i < res.ai_response.length; i += chunkSize) {
+        const chunk = res.ai_response.slice(i, i + chunkSize);
+        aiText += chunk;
+
+        setMessages((prev) => {
+          const aiIndex = prev.length - 1; // Dynamically calculate aiIndex
+          const copy = [...prev];
+          copy[aiIndex] = { role: "ai", text: aiText };
+          return copy;
+        });
+
+        await new Promise((r) => setTimeout(r, delay));
+      }
+
+      // Store final AI message in IndexedDB
       await addMessage({ role: "ai", text: res.ai_response });
     } catch (error) {
       console.error("Error while searching:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const formatText = (text: string) => {
+    const codeRegex = /```(\w+)?\n([\s\S]*?)```/g;
+    const parts: (string | JSX.Element)[] = [];
+    let lastIndex = 0;
+
+    let match;
+    while ((match = codeRegex.exec(text)) !== null) {
+      const [fullMatch, lang, code] = match;
+
+      // Push text before code block
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index));
+      }
+
+      // Push code block using CodeBlock component
+      parts.push(
+        <CodeBlock key={lastIndex} language={lang || "text"} code={code} />
+      );
+
+      lastIndex = match.index + fullMatch.length;
+    }
+
+    // Push remaining text after last code block
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+
+    // Apply **bold** and *semibold* to non-code text
+    return parts.map((part, idx) => {
+      if (typeof part === "string") {
+        const innerParts = part.split(/(\*\*.*?\*\*|\*[^*\s][^*]*[^*\s]\*)/g);
+        return innerParts.map((p, i) => {
+          if (p.startsWith("**") && p.endsWith("**")) {
+            return (
+              <span key={`${idx}-${i}`} className="font-semibold text-gray-700">
+                {p.slice(2, -2)}
+              </span>
+            );
+          } else if (p.startsWith("*") && p.endsWith("*")) {
+            return (
+              <span key={`${idx}-${i}`} className="font-medium text-gray-600">
+                {p.slice(1, -1)}
+              </span>
+            );
+          } else {
+            return p;
+          }
+        });
+      } else {
+        return part;
+      }
+    });
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -80,7 +163,7 @@ const Search = () => {
               msg.role === "user" ? "justify-end" : "justify-start"
             }`}
           >
-            <div className="flex items-end gap-1 max-w-[70%]">
+            <div className="flex items-end gap-1 max-w-[90%] sm:max-w-[70%]">
               {/* Message bubble */}
               <div
                 className={`px-2 py-2 rounded-2xl whitespace-pre-wrap ${
@@ -89,7 +172,7 @@ const Search = () => {
                     : "bg-gray-100 text-gray-900"
                 }`}
               >
-                {msg.text}
+                {formatText(msg.text)}
               </div>
 
               <Button
@@ -107,7 +190,7 @@ const Search = () => {
       </div>
 
       {/* Input box fixed at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 pb-4 px-4 flex justify-center bg-gradient-to-t from-white via-white to-transparent pt-20">
+      <div className="fixed bottom-10 left-0 right-0 pb-4 px-4 flex justify-center bg-gradient-to-t from-white via-white to-transparent pt-20">
         <div className="w-full max-w-3xl">
           <MessageInputBox
             onSend={handleSend}

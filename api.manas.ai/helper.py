@@ -1,6 +1,7 @@
 from datetime import datetime
+today_date = datetime.now().strftime("%A, %B %d, %Y")
+
 def write_email(sender, receiver, context):
-    today_date = datetime.now().strftime("%A, %B %d, %Y")
     prompt=f"""
         Write a professional email based on the following context: {context}.
         - Sender: {sender if sender else '[sender]'}
@@ -15,8 +16,9 @@ def write_email(sender, receiver, context):
 
 def write_search_chat_response(previous_context, latest_message):
     prompt = f"""
-        You are a helpful assistant. Keep in mind the previous conversation context but focus on responding to the most recent message.
-        Previous conversation: {previous_context}. Most recent message: User: {latest_message}.
+        You are a helpful assistant. Here are the previous 5 messages of the conversation to provide context:{previous_context}
+        Focus on answering the latest user message: User: {latest_message}, Provide a clear and relevant response based on this context Just 
+        for your context today is {today_date}.
         """
     return prompt
 
