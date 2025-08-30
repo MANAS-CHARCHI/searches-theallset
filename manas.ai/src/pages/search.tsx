@@ -5,29 +5,25 @@ import { Button } from "../components/ui/button";
 import { addMessage, getLastUserMessages } from "../helper/indexDB";
 import MessageInputBox from "../components/common/messageInput";
 import { searchAsChat } from "../routers/searchRouter";
-import CodeBlock from "../components/codeBlock";
 type ChatMessage = {
-  role: "ai" | "user"; // notice "user" instead of "user"
+  id: string;
+  role: "user" | "ai";
   text: string;
 };
 const Search = () => {
-  const [messages, setMessages] = useState<
-    { role: "user" | "ai"; text: string }[]
-  >([]);
-  const [copied, setCopied] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState(false);
 
-  const handleCopy = (text: string) => {
+  const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
-    setCopied(text);
-    setTimeout(() => setCopied(null), 2000);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
   };
 
   const handleSend = async (msg: string) => {
     if (!msg.trim()) return;
-
     // Add user message locally & store in IndexedDB
     setMessages((prev: ChatMessage[]) => [
       ...prev,
@@ -36,8 +32,9 @@ const Search = () => {
     await addMessage({ role: "user", text: msg });
 
     try {
-      // Get last 5 messages for context
-      const lastUserMessages = await getLastUserMessages(5);
+      // Get last 10 messages for context
+      const lastUserMessages = await getLastUserMessages(10);
+      // Convert to single string for context (or array if backend supports)
       const previousContext = lastUserMessages
         .slice(0, -1)
         .map((m) => `User: ${m.text}`)
@@ -46,35 +43,12 @@ const Search = () => {
       const latestMessage = lastUserMessages.length
         ? lastUserMessages[lastUserMessages.length - 1].text
         : msg;
-
-      setLoading(true);
       const res = await searchAsChat({
         previous_context: previousContext,
         latest_message: latestMessage,
       });
-
-      // Add an empty AI message to start streaming
-      setMessages((prev) => [...prev, { role: "ai", text: "" }]);
-
-      let aiText = "";
-      const chunkSize = 10;
-      const delay = 10; // milliseconds
-
-      for (let i = 0; i < res.ai_response.length; i += chunkSize) {
-        const chunk = res.ai_response.slice(i, i + chunkSize);
-        aiText += chunk;
-
-        setMessages((prev) => {
-          const aiIndex = prev.length - 1; // Dynamically calculate aiIndex
-          const copy = [...prev];
-          copy[aiIndex] = { role: "ai", text: aiText };
-          return copy;
-        });
-
-        await new Promise((r) => setTimeout(r, delay));
-      }
-
-      // Store final AI message in IndexedDB
+      // Add AI message locally & store in IndexedDB
+      setMessages((prev) => [...prev, { role: "ai", text: res.ai_response }]);
       await addMessage({ role: "ai", text: res.ai_response });
     } catch (error) {
       console.error("Error while searching:", error);
@@ -172,15 +146,15 @@ const Search = () => {
                     : "bg-gray-100 text-gray-900"
                 }`}
               >
-                {formatText(msg.text)}
+                {msg.text}
               </div>
 
               <Button
-                onClick={() => handleCopy(msg.text)}
+                onClick={() => handleCopy(msg.text, idx)}
                 size="sm"
                 className="p-1 text-gray-500 bg-white hover:bg-white  hover:text-gray-700 self-end"
               >
-                {copied === msg.text ? <Check /> : <Copy />}
+                {copiedIndex === idx ? <Check /> : <Copy />}
               </Button>
             </div>
           </motion.div>

@@ -16,9 +16,8 @@ def write_email(sender, receiver, context):
 
 def write_search_chat_response(previous_context, latest_message):
     prompt = f"""
-        You are a helpful assistant. Here are the previous 5 messages of the conversation to provide context:{previous_context}
-        Focus on answering the latest user message: User: {latest_message}, Provide a clear and relevant response based on this context.
-        Just to keep you updated today is {today_date}.
+        You are a helpful assistant. Keep in mind the previous conversation context but focus on responding to the most recent message.
+        Previous conversation: {previous_context}. Most recent message: User: {latest_message}.
         """
     return prompt
 

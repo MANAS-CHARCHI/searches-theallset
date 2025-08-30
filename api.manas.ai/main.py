@@ -4,12 +4,18 @@ from pydantic import BaseModel
 from callGemini import call_gemini, chat
 from helper import write_email, format_email_for_user, write_search_chat_response # assuming this saves or sends email
 
+origins = [
+    "https://searches.theallset.in",       # production frontend
+    "https://dev.searches.theallset.in",   # dev frontend, if separate
+    "http://localhost:3000",               # local dev frontend
+]
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow all origins
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # allow all methods (GET, POST, etc.)
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # allow all methods (GET, POST, etc.)
     allow_headers=["*"],  # allow all headers
 )
 
