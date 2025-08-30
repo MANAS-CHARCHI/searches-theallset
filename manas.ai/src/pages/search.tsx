@@ -6,37 +6,36 @@ import { addMessage, getLastUserMessages } from "../helper/indexDB";
 import MessageInputBox from "../components/common/messageInput";
 import { searchAsChat } from "../routers/searchRouter";
 import CodeBlock from "../components/codeBlock";
+import { v4 as uuidv4 } from "uuid";
+
 type ChatMessage = {
-  role: "ai" | "user"; // notice "user" instead of "user"
+  id: string;
+  role: "user" | "ai";
   text: string;
 };
 const Search = () => {
-  const [messages, setMessages] = useState<
-    { role: "user" | "ai"; text: string }[]
-  >([]);
-  const [copied, setCopied] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState(false);
+  // const [loading, setLoading] = useState(false);
 
-  const handleCopy = (text: string) => {
+  const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
-    setCopied(text);
-    setTimeout(() => setCopied(null), 2000);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
   };
 
   const handleSend = async (msg: string) => {
     if (!msg.trim()) return;
 
-    // Add user message locally & store in IndexedDB
-    setMessages((prev: ChatMessage[]) => [
-      ...prev,
-      { role: "user", text: msg },
-    ]);
+    // const userId = crypto.randomUUID();
+    const myUUID = uuidv4();
+
+    setMessages((prev) => [...prev, { id: myUUID, role: "user", text: msg }]);
     await addMessage({ role: "user", text: msg });
 
     try {
-      // Get last 5 messages for context
       const lastUserMessages = await getLastUserMessages(5);
       const previousContext = lastUserMessages
         .slice(0, -1)
@@ -47,39 +46,28 @@ const Search = () => {
         ? lastUserMessages[lastUserMessages.length - 1].text
         : msg;
 
-      setLoading(true);
+      // const loadingId = crypto.randomUUID();
+      const loadingId = uuidv4();
+      setMessages((prev) => [
+        ...prev,
+        { id: loadingId, role: "ai", text: "__loading__" },
+      ]);
+
       const res = await searchAsChat({
         previous_context: previousContext,
         latest_message: latestMessage,
       });
 
-      // Add an empty AI message to start streaming
-      setMessages((prev) => [...prev, { role: "ai", text: "" }]);
+      // update the right loading bubble
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === loadingId ? { ...m, text: res.ai_response } : m
+        )
+      );
 
-      let aiText = "";
-      const chunkSize = 10;
-      const delay = 10; // milliseconds
-
-      for (let i = 0; i < res.ai_response.length; i += chunkSize) {
-        const chunk = res.ai_response.slice(i, i + chunkSize);
-        aiText += chunk;
-
-        setMessages((prev) => {
-          const aiIndex = prev.length - 1; // Dynamically calculate aiIndex
-          const copy = [...prev];
-          copy[aiIndex] = { role: "ai", text: aiText };
-          return copy;
-        });
-
-        await new Promise((r) => setTimeout(r, delay));
-      }
-
-      // Store final AI message in IndexedDB
       await addMessage({ role: "ai", text: res.ai_response });
     } catch (error) {
       console.error("Error while searching:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -172,15 +160,26 @@ const Search = () => {
                     : "bg-gray-100 text-gray-900"
                 }`}
               >
-                {formatText(msg.text)}
+                {msg.text === "__loading__" ? (
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <span>Thinking</span>
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" />
+                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-150" />
+                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-300" />
+                    </div>
+                  </div>
+                ) : (
+                  formatText(msg.text)
+                )}
               </div>
 
               <Button
-                onClick={() => handleCopy(msg.text)}
+                onClick={() => handleCopy(msg.text, idx)}
                 size="sm"
                 className="p-1 text-gray-500 bg-white hover:bg-white  hover:text-gray-700 self-end"
               >
-                {copied === msg.text ? <Check /> : <Copy />}
+                {copiedIndex === idx ? <Check /> : <Copy />}
               </Button>
             </div>
           </motion.div>
@@ -190,7 +189,7 @@ const Search = () => {
       </div>
 
       {/* Input box fixed at bottom */}
-      <div className="fixed bottom-10 left-0 right-0 pb-4 px-4 flex justify-center bg-gradient-to-t from-white via-white to-transparent pt-20">
+      <div className="fixed bottom-0 left-0 right-0 pb-4 px-4 flex justify-center bg-gradient-to-t from-white via-white to-transparent pt-20">
         <div className="w-full max-w-3xl">
           <MessageInputBox
             onSend={handleSend}
