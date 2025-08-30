@@ -99,7 +99,6 @@ def call_gemini_with_history(prompt: str) -> str:
             "candidate_count": 1
         }
     }
-
     try:
         response = requests.post(GEMINI_API_URL, json=payload, headers=headers)
         response.raise_for_status()
