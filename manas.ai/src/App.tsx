@@ -15,7 +15,7 @@ function App() {
     <Router>
       <Header />
       <Sidebar />
-      <main className="sm:pt-16 pt-12 lg:ml-44 p-6">
+      <main className="sm:pt-16 pt-12 lg:ml-60 sm:p-6 p-2">
         <Routes>
           <Route path="*" element={<Navigate to="/" replace />} />
           <Route path="/" element={<Navigate to="/search" replace />} />
