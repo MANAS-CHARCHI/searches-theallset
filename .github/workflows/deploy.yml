@@ -44,7 +44,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "18" # adjust if your project uses a different version
+          node-version: "18"
+
+      # 4a. Create frontend .env from secret
+      - name: Create frontend .env
+        run: |
+          echo "${{ secrets.FRONTEND_ENV_FILE }}" > manas.ai/.env
 
       # 5. Build frontend (React)
       - name: Build frontend
@@ -59,8 +64,8 @@ jobs:
         run: |
           rsync -avz --delete --exclude 'venv/' -e "ssh -i ~/.ssh/theallset.pem" ./api.manas.ai $EC2_USER@$EC2_IP:$TARGET_DIR/
 
-      # 7. Upload environment file
-      - name: Upload environment file
+      # 7. Upload environment file for backend
+      - name: Upload backend environment file
         run: |
           echo "$ENV_FILE" > .env
           scp -i ~/.ssh/theallset.pem .env $EC2_USER@$EC2_IP:$TARGET_DIR/api.manas.ai/.env
