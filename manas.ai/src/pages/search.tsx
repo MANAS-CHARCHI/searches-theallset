@@ -135,7 +135,7 @@ const Search = () => {
       >
         {messages.length === 0 && (
           <>
-            <div className="flex justify-center  mt-2">
+            <div className="flex justify-center  mt-3">
               <img src="/theallset.png" className="w-6" />
             </div>
             <div className="text-center text-gray-500 dark:text-gray-400">
