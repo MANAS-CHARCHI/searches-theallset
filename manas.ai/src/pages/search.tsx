@@ -5,6 +5,10 @@ import { Button } from "../components/ui/button";
 import { addMessage, getLastUserMessages } from "../helper/indexDB";
 import MessageInputBox from "../components/common/messageInput";
 import { searchAsChat } from "../routers/searchRouter";
+import CodeBlock from "../components/codeBlock";
+import { v4 as uuidv4 } from "uuid";
+const myUUID = uuidv4();
+
 type ChatMessage = {
   id: string;
   role: "user" | "ai";
@@ -15,6 +19,7 @@ const Search = () => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  // const [loading, setLoading] = useState(false);
 
   const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
@@ -24,17 +29,13 @@ const Search = () => {
 
   const handleSend = async (msg: string) => {
     if (!msg.trim()) return;
-    // Add user message locally & store in IndexedDB
-    setMessages((prev: ChatMessage[]) => [
-      ...prev,
-      { role: "user", text: msg },
-    ]);
+
+    // const userId = crypto.randomUUID();
+    setMessages((prev) => [...prev, { id: myUUID, role: "user", text: msg }]);
     await addMessage({ role: "user", text: msg });
 
     try {
-      // Get last 10 messages for context
-      const lastUserMessages = await getLastUserMessages(10);
-      // Convert to single string for context (or array if backend supports)
+      const lastUserMessages = await getLastUserMessages(5);
       const previousContext = lastUserMessages
         .slice(0, -1)
         .map((m) => `User: ${m.text}`)
@@ -43,17 +44,28 @@ const Search = () => {
       const latestMessage = lastUserMessages.length
         ? lastUserMessages[lastUserMessages.length - 1].text
         : msg;
+
+      const loadingId = crypto.randomUUID();
+      setMessages((prev) => [
+        ...prev,
+        { id: loadingId, role: "ai", text: "__loading__" },
+      ]);
+
       const res = await searchAsChat({
         previous_context: previousContext,
         latest_message: latestMessage,
       });
-      // Add AI message locally & store in IndexedDB
-      setMessages((prev) => [...prev, { role: "ai", text: res.ai_response }]);
+
+      // update the right loading bubble
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === loadingId ? { ...m, text: res.ai_response } : m
+        )
+      );
+
       await addMessage({ role: "ai", text: res.ai_response });
     } catch (error) {
       console.error("Error while searching:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -122,9 +134,14 @@ const Search = () => {
         className="flex-1 overflow-y-auto px-4 py-4 space-y-3 pb-32 justify-center"
       >
         {messages.length === 0 && (
-          <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
-            Start a conversation by typing a message below
-          </div>
+          <>
+            <div className="flex justify-center  mt-2">
+              <img src="/theallset.png" className="w-6" />
+            </div>
+            <div className="text-center text-gray-500 dark:text-gray-400">
+              Start a conversation by typing a message below
+            </div>
+          </>
         )}
 
         {messages.map((msg, idx) => (
@@ -146,7 +163,18 @@ const Search = () => {
                     : "bg-gray-100 text-gray-900"
                 }`}
               >
-                {msg.text}
+                {msg.text === "__loading__" ? (
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <span>Thinking</span>
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" />
+                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-150" />
+                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-300" />
+                    </div>
+                  </div>
+                ) : (
+                  formatText(msg.text)
+                )}
               </div>
 
               <Button
@@ -164,7 +192,7 @@ const Search = () => {
       </div>
 
       {/* Input box fixed at bottom */}
-      <div className="fixed bottom-10 left-0 right-0 pb-4 px-4 flex justify-center bg-gradient-to-t from-white via-white to-transparent pt-20">
+      <div className="fixed bottom-0 left-0 lg:ml-60 sm:p-6 right-0 pb-4 px-4 flex justify-center bg-gradient-to-t from-white via-white to-transparent pt-20">
         <div className="w-full max-w-3xl">
           <MessageInputBox
             onSend={handleSend}
