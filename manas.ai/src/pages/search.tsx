@@ -134,9 +134,14 @@ const Search = () => {
         className="flex-1 overflow-y-auto px-4 py-4 space-y-3 pb-32 justify-center"
       >
         {messages.length === 0 && (
-          <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
-            Start a conversation by typing a message below
-          </div>
+          <>
+            <div className="flex justify-center  mt-2">
+              <img src="/theallset.png" className="w-6" />
+            </div>
+            <div className="text-center text-gray-500 dark:text-gray-400">
+              Start a conversation by typing a message below
+            </div>
+          </>
         )}
 
         {messages.map((msg, idx) => (
@@ -187,7 +192,7 @@ const Search = () => {
       </div>
 
       {/* Input box fixed at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 pb-4 px-4 flex justify-center bg-gradient-to-t from-white via-white to-transparent pt-20">
+      <div className="fixed bottom-0 left-0 lg:ml-60 sm:p-6 right-0 pb-4 px-4 flex justify-center bg-gradient-to-t from-white via-white to-transparent pt-20">
         <div className="w-full max-w-3xl">
           <MessageInputBox
             onSend={handleSend}
