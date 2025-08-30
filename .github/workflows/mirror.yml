@@ -16,7 +16,7 @@ jobs:
 
       - name: Push to GitLab
         run: |
-          git config --global user.email "you@example.com"
-          git config --global user.name "Your Name"
+          git config --global user.email "charchimanas2018@gmail.com"
+          git config --global user.name "MANAS-CHARCHI"
           git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/${{ secrets.GITLAB_REPO }}
           git push --mirror gitlab
